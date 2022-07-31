@@ -1,5 +1,5 @@
 --TO DO:
---am_gm_two (set version of it)
+--am_gm_two (set version of it) --> sum/prod of set of card 2
 --pred
 --Fix names (replace prod_s1_nonneg, a with actual s1_nonempty_keywords with meaning)
 --Fix formatting
@@ -14,12 +14,19 @@ import analysis.special_functions.pow
 open_locale classical
 noncomputable theory
 
-
 open_locale big_operators
 
 open finset
   --set s := (finset.range(20)).filter( λ (k : ℕ), 3 * k + 7 < 28),
   --finset.mem filter
+
+--Cant find in documentation
+lemma finset.exists_nonmem (s : finset ℕ) : ∃ (t : ℕ), t ∉ s :=
+
+begin
+  sorry,
+end
+
 lemma finset.construct_disj (n : ℕ) : ∃ (s1 s2 : finset ℕ), 
 (s1.card = n) ∧ (s2.card = n) ∧ (s1 ∩ s2 = ∅) :=
 begin
@@ -84,7 +91,33 @@ begin
   rw ←finset.disjoint_iff_inter_eq_empty,
   refine finset.disjoint_sdiff,
   rw s2_def,
-  sorry, --cant find lemm
+  rw finset.union_sdiff_of_subset s1_subset,
+end
+
+lemma finset.sum_card_two (f : ℕ → ℝ) {x y : ℕ} (hxy : x ≠ y): ∑ (i : ℕ) in {x, y}, f i = f x + f y :=
+
+begin
+  have split : ({x, y} : finset ℕ) = {x} ∪ {y},
+  {
+    sorry,
+  },
+  rw split,
+  rw finset.sum_union (finset.disjoint_singleton.2 hxy),
+  rw finset.sum_singleton,
+  rw finset.sum_singleton,
+end
+
+lemma finset.prod_card_two (f : ℕ → ℝ) {x y : ℕ} (hxy : x ≠ y): ∏ (i : ℕ) in {x, y}, f i = f x * f y :=
+
+begin
+    have split : ({x, y} : finset ℕ) = {x} ∪ {y},
+  {
+    sorry,
+  },
+  rw split,
+  rw finset.prod_union (finset.disjoint_singleton.2 hxy),
+  rw finset.prod_singleton,
+  rw finset.prod_singleton,
 end
 
 def finset_am (f : ℕ → ℝ) (s : finset ℕ) : ℝ :=
@@ -311,6 +344,139 @@ begin
   refine gm_weighted,
 end
 
+lemma sum_equiv {f g : ℕ → ℝ} {s : finset ℕ} 
+(f_g_equiv : ∀ (k : ℕ), k ∈ s → f k = g k) :
+∑ (i : ℕ) in s, f i = ∑ (i : ℕ) in s, g i := 
+
+begin
+  have induct_on_card : ∀ (n : ℕ), ∀ (t : finset ℕ), t.card = n → 
+  (∀ (k : ℕ), k ∈ t → f k = g k) → 
+  ∑ (i : ℕ) in t, f i = ∑ (i : ℕ) in t, g i,
+  {
+    intro n,
+    induction n with k hk,
+    {
+      intro t,
+      intro t_card,
+      intro f_g_equiv_in_t,
+      have t_empty := finset.card_eq_zero.1 t_card,
+      rw t_empty,
+      rw finset.sum_empty,
+      rw finset.sum_empty,
+    },
+    {
+      intro t,
+      intro t_card,
+      intro f_g_equiv_in_t,
+      have t_card_pos := nat.succ_pos k,
+      rw ←t_card at t_card_pos,
+      have k_le_t_card := le_of_lt (nat.lt_succ_self k),
+      rw ←t_card at k_le_t_card,
+      rcases finset.exists_smaller_set t k k_le_t_card with ⟨t', t'_sbset, t'_card⟩,
+      have sdiff_union_t'_eq_t := finset.sdiff_union_of_subset t'_sbset,
+      rw ←sdiff_union_t'_eq_t,
+      rw finset.sum_union finset.sdiff_disjoint,
+      rw finset.sum_union finset.sdiff_disjoint,
+      have sing_card := finset.card_sdiff t'_sbset,
+      rw t_card at sing_card,
+      rw t'_card at sing_card,
+      rw nat.succ_eq_add_one at sing_card,
+      rw nat.add_sub_cancel_left at sing_card,
+      --
+      cases finset.card_eq_one.1 sing_card with l hl,
+      rw hl,
+      rw finset.sum_singleton,
+      rw finset.sum_singleton,
+      have f_equiv_g_in_t' : ∀ (k : ℕ), k ∈ t' → f k = g k,
+      {
+        intro k,
+        intro k_in_t',
+        have k_in_t := finset.mem_of_subset t'_sbset k_in_t',
+        refine f_g_equiv_in_t k k_in_t,
+      },
+      rw hk t' t'_card f_equiv_g_in_t',
+      rw add_left_inj,
+      have sing_in_t := finset.subset_union_left {l} t',
+      rw ←hl at sing_in_t,
+      rw finset.sdiff_union_of_subset t'_sbset at sing_in_t,
+      rw hl at sing_in_t,
+      have l_in_t := finset.singleton_subset_iff.1 sing_in_t,
+      refine f_g_equiv_in_t l l_in_t,  
+    },
+  },
+  have answer := induct_on_card s.card s,
+  rw eq_self_iff_true at answer,
+  rw forall_true_left at answer,
+  refine answer f_g_equiv,
+end
+
+lemma prod_equiv {f g : ℕ → ℝ} {s : finset ℕ} 
+(f_g_equiv : ∀ (k : ℕ), k ∈ s → f k = g k) :
+∏ (i : ℕ) in s, f i = ∏ (i : ℕ) in s, g i := 
+
+begin
+  have induct_on_card : ∀ (n : ℕ), ∀ (t : finset ℕ), t.card = n → 
+  (∀ (k : ℕ), k ∈ t → f k = g k) → 
+  ∏ (i : ℕ) in t, f i = ∏ (i : ℕ) in t, g i,
+  {
+    intro n,
+    induction n with k hk,
+    {
+      intro t,
+      intro t_card,
+      intro f_g_equiv_in_t,
+      have t_empty := finset.card_eq_zero.1 t_card,
+      rw t_empty,
+      rw finset.prod_empty,
+      rw finset.prod_empty,
+    },
+    {
+      intro t,
+      intro t_card,
+      intro f_g_equiv_in_t,
+      have t_card_pos := nat.succ_pos k,
+      rw ←t_card at t_card_pos,
+      have k_le_t_card := le_of_lt (nat.lt_succ_self k),
+      rw ←t_card at k_le_t_card,
+      rcases finset.exists_smaller_set t k k_le_t_card with ⟨t', t'_sbset, t'_card⟩,
+      have sdiff_union_t'_eq_t := finset.sdiff_union_of_subset t'_sbset,
+      rw ←sdiff_union_t'_eq_t,
+      rw finset.prod_union finset.sdiff_disjoint,
+      rw finset.prod_union finset.sdiff_disjoint,
+      have sing_card := finset.card_sdiff t'_sbset,
+      rw t_card at sing_card,
+      rw t'_card at sing_card,
+      rw nat.succ_eq_add_one at sing_card,
+      rw nat.add_sub_cancel_left at sing_card,
+      --
+      cases finset.card_eq_one.1 sing_card with l hl,
+      rw hl,
+      rw finset.prod_singleton,
+      rw finset.prod_singleton,
+      have f_equiv_g_in_t' : ∀ (k : ℕ), k ∈ t' → f k = g k,
+      {
+        intro k,
+        intro k_in_t',
+        have k_in_t := finset.mem_of_subset t'_sbset k_in_t',
+        refine f_g_equiv_in_t k k_in_t,
+      },
+      rw hk t' t'_card f_equiv_g_in_t',
+      rw mul_eq_mul_right_iff,
+      left, 
+      have sing_in_t := finset.subset_union_left {l} t',
+      rw ←hl at sing_in_t,
+      rw finset.sdiff_union_of_subset t'_sbset at sing_in_t,
+      rw hl at sing_in_t,
+      have l_in_t := finset.singleton_subset_iff.1 sing_in_t,
+      refine f_g_equiv_in_t l l_in_t,  
+    },
+  },
+  have answer := induct_on_card s.card s,
+  rw eq_self_iff_true at answer,
+  rw forall_true_left at answer,
+  refine answer f_g_equiv,
+end
+
 lemma am_gm_two' {x y : ℝ} (hx : 0 ≤ x) (hy : 0 ≤ y) : 
 (x * y) ^ (1 / (2 : ℝ)) ≤ (x + y) / 2 :=
 
@@ -360,14 +526,12 @@ begin
   rw finset_am,
   rw s_card,
   rw hxy,
-  have s1_sum_over_two_els : ∑ (i : ℕ) in {x, y}, f i = (f x) + (f y),
+  have x_ne_y : x ≠ y,
   {
     sorry,
   },
-  have s1_prod_over_two_els : ∏ (i : ℕ) in {x, y}, f i = (f x) * (f y),
-  {
-    sorry,
-  },
+  have s1_sum_over_two_els := finset.sum_card_two f x_ne_y,
+  have s1_prod_over_two_els := finset.prod_card_two f x_ne_y,
   rw s1_sum_over_two_els,
   rw s1_prod_over_two_els,
   simp only [nat.cast_bit0, nat.cast_one],
@@ -457,8 +621,56 @@ lemma am_gm_pred {f : ℕ → ℝ} (f_nneg : ∀ (k : ℕ), (0 ≤ f k)) :
 ∀ (n : ℕ), am_gm_prop f (n + 1) → am_gm_prop f n :=
 
 begin
+  --DEAL WITH am_gm_prop 0 = false
 --set f' : ℕ → ℝ := λ m, if m < n then f n else 1,
-  sorry,
+  have restating : ∀ (f : ℕ → ℝ), (∀ (k : ℕ), 0 ≤ f k) → 
+  ∀ (n : ℕ), am_gm_prop f (n + 1) → am_gm_prop f n,
+  {
+    intro n,
+    -- intro am_gm_prop_succ_n,
+    -- rw am_gm_prop,
+    -- intro s,
+    -- intro s_card,
+    -- have s_nonmem := finset.exists_nonmem s,
+    -- cases s_nonmem with l hl,
+    -- have l_disj := finset.disjoint_singleton_right.2 hl,
+    -- have s'_card := finset.card_disjoint_union l_disj,
+    -- rw s_card at s'_card,
+    -- rw finset.card_singleton l at s'_card,
+    -- rw am_gm_prop at am_gm_prop_succ_n,
+    -- have answer := am_gm_prop_succ_n (s ∪ {l}) s'_card,
+    -- rw finset_am at answer,
+    -- rw s'_card at answer,
+    -- rw finset.sum_union l_disj at answer,
+    -- rw finset.sum_singleton at answer,
+    -- set f' : ℕ → ℝ := λ x, if x ∈ s then f x else (finset_am f s) with f'_def,
+    -- have f_equiv_f' : ∀ (k : ℕ), k ∈ s → f k = f' k,
+    -- {
+    --   intro k,
+    --   intro k_in_s,
+    --   rw f'_def,
+    --   sorry,
+    -- },
+    -- have sum_eq := sum_equiv f_equiv_f',
+    -- have prod_eq := prod_equiv f_equiv_f',
+    sorry,
+  },
+  intro n,
+  intro am_gm_prop_succ_n,
+  refine restating f f_nneg n am_gm_prop_succ_n,
+
+  --rw prop_equiv 
+
+--   PLAN
+-- Assume P(n) and get s of card n - 1.
+-- Take some x ∉ s, add make s' = s ∪ {x}
+-- Set f x = am s'
+-- use P(n) on s' 
+-- PROFIT
+-- 
+-- 
+-- 
+--   
 end
 
 theorem am_gm' {f : ℕ → ℝ} (f_nneg : (∀ (k : ℕ), 0 ≤ f k)) {n : ℕ} (n_pos : 0 < n): 
@@ -486,6 +698,3 @@ begin
   },
   refine answer s reflexivity,
 end
-
-
-
